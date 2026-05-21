@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conexão Jampa | Em breve</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styleshome.css">
 </head>
 
 <body>
@@ -66,24 +66,42 @@
                 </div>
             </section>
 
-            <section class="features" id="experiencias" aria-label="Prévia de experiências">
-                <article class="feature">
-                    <h2>Roteiros com alma</h2>
-                    <p>Curadoria de praias, centros culturais, mirantes, cafés e caminhos para explorar sem pressa.</p>
-                </article>
+           <div class="carousel" id="experiencias">
 
-                <article class="feature" id="roteiros">
-                    <h2>Achados da cidade</h2>
-                    <p>Dicas locais para comer bem, comprar de pequenos produtores e descobrir lugares fora do óbvio.</p>
-                </article>
+  <div class="carousel-track" id="track">
+    <img src="img1.jpg" class="slide" alt="Experiência em João Pessoa">
+    <img src="img2.jpg" class="slide" alt="Roteiro em João Pessoa">
+    <img src="img3.jpg" class="slide" alt="Paisagem de João Pessoa">
+  </div>
 
-                <article class="feature">
-                    <h2>Em breve no ar</h2>
-                    <p>Estamos preparando a primeira versão do portal. Entre na lista e receba as novidades.</p>
-                </article>
-            </section>
+  <button id="prev" type="button" aria-label="Imagem anterior">◀</button>
+  <button id="next" type="button" aria-label="Próxima imagem">▶</button>
+
+</div>
         </main>
     </div>
+    <script>
+        const track = document.getElementById("track");
+        const slides = document.querySelectorAll(".slide");
+        const prev = document.getElementById("prev");
+        const next = document.getElementById("next");
+        let currentSlide = 0;
+
+        function updateCarousel() {
+            track.style.transform = `translateX(-${currentSlide * 100}%)`;
+        }
+
+        prev.addEventListener("click", () => {
+            currentSlide = currentSlide === 0 ? slides.length - 1 : currentSlide - 1;
+            updateCarousel();
+        });
+
+        next.addEventListener("click", () => {
+            currentSlide = currentSlide === slides.length - 1 ? 0 : currentSlide + 1;
+            updateCarousel();
+        });
+    </script>
+
 </body>
 
 </html>
