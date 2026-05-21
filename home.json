@@ -1,0 +1,9 @@
+{
+  "track": "track",
+  "slides": "slide",
+  "current": 0,
+  "navigation": {
+    "next": "next",
+    "prev": "prev"
+  }
+}
