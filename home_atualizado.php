@@ -345,13 +345,27 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
 
         .wave-line { width:100%; height:18px; margin-top:18px; background:radial-gradient(22px 12px at 11px 0,transparent 10px,var(--off-white) 11px 12px,transparent 13px) 0 0/44px 18px repeat-x; opacity:.88; }
 
-        /* ---- Features ---- */
-        .features { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:0 0 48px; position:relative; z-index:2; }
-        .feature   { min-height:136px; padding:20px; background:rgba(248,244,234,.78); border-top:6px solid var(--coral); box-shadow:0 14px 30px rgba(18,48,68,.08); }
-        .feature:nth-child(2) { border-color:var(--sun-gold); }
-        .feature:nth-child(3) { border-color:var(--sea-foam); }
-        .feature h2 { margin:0 0 10px; color:var(--deep-blue); font-size:1rem; text-transform:uppercase; }
-        .feature p  { margin:0; color:#536170; line-height:1.55; font-size:.95rem; }
+        /* ---- Carousel ---- */
+        .carousel { position:relative; overflow:hidden; margin:0 0 48px; border-radius:18px 0 0 18px; box-shadow:0 22px 48px rgba(18,48,68,.16); }
+        .carousel-track { display:flex; transition:transform 0.4s ease; }
+        .slide { display:block; min-width:100%; height:clamp(240px,44vw,520px); object-fit:cover; }
+        #prev, #next { position:absolute; top:50%; transform:translateY(-50%); width:44px; aspect-ratio:1; border:0; border-radius:50%; color:var(--off-white); background:rgba(18,48,68,.72); cursor:pointer; font-size:1.2rem; line-height:1; }
+        #prev { left:10px; }
+        #next { right:10px; }
+
+        /* ---- Event Hall ---- */
+        .event-hall { margin:0 0 72px; position:relative; z-index:2; }
+        .event-hall-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+        .event-hall-header h2 { margin:0; color:var(--ink); font-size:clamp(1.25rem,2.5vw,1.75rem); }
+        .event-hall-header a { color:var(--deep-blue); font-size:.78rem; font-weight:900; }
+        .event-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:16px; }
+        .event-card { min-width:0; }
+        .event-banner { position:relative; aspect-ratio:16/9; overflow:hidden; border-radius:8px; background:linear-gradient(135deg,rgba(242,97,76,.18),rgba(143,200,221,.36)),var(--off-white); box-shadow:0 14px 30px rgba(18,48,68,.1); }
+        .event-banner::after { content:attr(data-placeholder); position:absolute; inset:0; display:grid; place-items:center; padding:14px; color:var(--deep-blue); font-size:.78rem; font-weight:900; text-align:center; }
+        .event-card img { display:block; position:relative; z-index:1; width:100%; height:100%; object-fit:cover; }
+        .event-card h3 { margin:10px 0 4px; color:var(--ink); font-size:.9rem; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .event-card p, .event-card time { display:block; margin:0; color:#536170; font-size:.72rem; line-height:1.45; }
+        .event-card time { margin-top:3px; }
 
         /* ======================================================
            MODAL DE LOGIN / CADASTRO
@@ -442,7 +456,9 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             .ocean { width:92vw; right:-18px; bottom:0; }
             .ticket   { top:26%; right:4%; width:min(76vw,270px); }
             .postcard { width:min(78vw,300px); bottom:12%; }
-            .features { grid-template-columns:1fr; }
+            .carousel { border-radius:12px; }
+            .event-grid { grid-auto-columns:minmax(220px,72vw); grid-auto-flow:column; grid-template-columns:none; overflow-x:auto; padding-bottom:12px; scroll-snap-type:x mandatory; }
+            .event-card { scroll-snap-align:start; }
         }
         @media (max-width:520px) {
             main,header { width:min(100% - 28px,1120px); }
@@ -453,6 +469,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             .hero-art { min-height:390px; }
             .map-lines { height:135px; }
             .modal    { padding:28px 20px 24px; }
+            .event-hall-header { align-items:flex-start; flex-direction:column; gap:6px; }
         }
     </style>
 </head>
@@ -532,20 +549,115 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             </div>
         </section>
 
-        <section class="features" id="experiencias" aria-label="Prévia de experiências">
-            <article class="feature">
-                <h2>Roteiros com alma</h2>
-                <p>Curadoria de praias, centros culturais, mirantes, cafés e caminhos para explorar sem pressa.</p>
-            </article>
-            <article class="feature" id="roteiros">
-                <h2>Achados da cidade</h2>
-                <p>Dicas locais para comer bem, comprar de pequenos produtores e descobrir lugares fora do óbvio.</p>
-            </article>
-            <article class="feature">
-                <h2>Em breve no ar</h2>
-                <p>Estamos preparando a primeira versão do portal. Entre na lista e receba as novidades.</p>
-            </article>
+        <div class="carousel" id="experiencias">
+            <div class="carousel-track" id="track">
+                <img src="img1.jpg" class="slide" alt="Experiência em João Pessoa">
+                <img src="img2.jpg" class="slide" alt="Roteiro em João Pessoa">
+                <img src="img3.jpg" class="slide" alt="Paisagem de João Pessoa">
+            </div>
+            <button id="prev" type="button" aria-label="Imagem anterior">◀</button>
+            <button id="next" type="button" aria-label="Próxima imagem">▶</button>
+        </div>
+
+        <section class="event-hall" id="roteiros" aria-labelledby="event-hall-title">
+            <div class="event-hall-header">
+                <h2 id="event-hall-title">Eventos em destaque</h2>
+                <a href="#" aria-label="Ver todos os eventos">Ver tudo</a>
+            </div>
+            <div class="event-grid">
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-1.jpg">
+                        <img src="eventos/banner-1.jpg" alt="Banner do evento 1" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-01">Segunda, 1 de Jun às 20:00</time>
+                </article>
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-2.jpg">
+                        <img src="eventos/banner-2.jpg" alt="Banner do evento 2" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-05">Sexta, 5 de Jun às 21:00</time>
+                </article>
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-3.jpg">
+                        <img src="eventos/banner-3.jpg" alt="Banner do evento 3" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-12">Sexta, 12 de Jun às 19:30</time>
+                </article>
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-4.jpg">
+                        <img src="eventos/banner-4.jpg" alt="Banner do evento 4" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-18">Quinta, 18 de Jun às 20:00</time>
+                </article>
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-5.jpg">
+                        <img src="eventos/banner-5.jpg" alt="Banner do evento 5" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-25">Quinta, 25 de Jun às 22:00</time>
+                </article>
+            </div>
         </section>
+ <section class="event-hall" id="roteiros" aria-labelledby="event-hall-title">
+            <div class="event-hall-header">
+                <h2 id="event-hall-title">Eventos em destaque</h2>
+                <a href="#" aria-label="Ver todos os eventos">Ver tudo</a>
+            </div>
+            <div class="event-grid">
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-1.jpg">
+                        <img src="eventos/banner-1.jpg" alt="Banner do evento 1" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-01">Segunda, 1 de Jun às 20:00</time>
+                </article>
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-2.jpg">
+                        <img src="eventos/banner-2.jpg" alt="Banner do evento 2" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-05">Sexta, 5 de Jun às 21:00</time>
+                </article>
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-3.jpg">
+                        <img src="eventos/banner-3.jpg" alt="Banner do evento 3" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-12">Sexta, 12 de Jun às 19:30</time>
+                </article>
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-4.jpg">
+                        <img src="eventos/banner-4.jpg" alt="Banner do evento 4" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-18">Quinta, 18 de Jun às 20:00</time>
+                </article>
+                <article class="event-card">
+                    <div class="event-banner" data-placeholder="eventos/banner-5.jpg">
+                        <img src="eventos/banner-5.jpg" alt="Banner do evento 5" onerror="this.hidden = true">
+                    </div>
+                    <h3>Nome do evento</h3>
+                    <p>Local do evento - João Pessoa, PB</p>
+                    <time datetime="2026-06-25">Quinta, 25 de Jun às 22:00</time>
+                </article>
+            </div>
+
+            
+        </section>
+
     </main>
 </div>
 
@@ -638,9 +750,27 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
 
 
 <script>
-    // ----------------------------------------------------------
-    // Controle do modal
-    // ----------------------------------------------------------
+    // Carrossel
+    const track = document.getElementById("track");
+    const slides = document.querySelectorAll(".slide");
+    const prev = document.getElementById("prev");
+    const next = document.getElementById("next");
+    let currentSlide = 0;
+
+    function updateCarousel() {
+        track.style.transform = `translateX(-${currentSlide * 100}%)`;
+    }
+
+    prev.addEventListener("click", () => {
+        currentSlide = currentSlide === 0 ? slides.length - 1 : currentSlide - 1;
+        updateCarousel();
+    });
+
+    next.addEventListener("click", () => {
+        currentSlide = currentSlide === slides.length - 1 ? 0 : currentSlide + 1;
+        updateCarousel();
+    });
+
     const overlay = document.getElementById('modalOverlay');
 
     function abrirModal(aba = 'login') {
@@ -680,6 +810,10 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
         abrirModal(acaoEnviada === 'registrar' ? 'registro' : 'login');
     <?php endif; ?>
 </script>
+
+<footer>
+    <p></p>
+</footer>
 
 </body>
 </html>
