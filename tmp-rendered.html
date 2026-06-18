@@ -1,170 +1,4 @@
-<?php
-
-
-session_start();
-
-
-define('DB_HOST',   'localhost');
-define('DB_NAME',   'conexao_jampa');
-define('DB_USER',   'root');        // seu usuário do MySQL
-define('DB_PASS',   '');            // sua senha do MySQL
-define('DB_CHARSET','utf8mb4');
-
-
-function getConnection(): PDO {
-    static $pdo = null;
-
-    if ($pdo === null) {
-        $dsn = sprintf(
-            'mysql:host=%s;dbname=%s;charset=%s',
-            DB_HOST, DB_NAME, DB_CHARSET
-        );
-
-        $options = [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
-        ];
-
-        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-    }
-
-    return $pdo;
-}
-
-function buscarUsuarioPorEmail(string $email): array|false {
-    $pdo  = getConnection();
-    $stmt = $pdo->prepare('SELECT id, nome, email, senha_hash FROM usuarios WHERE email = :email LIMIT 1');
-    $stmt->execute([':email' => $email]);
-    return $stmt->fetch();
-}
-
-/**
- * Registra um novo usuário no banco de dados.
- * Retorna true em caso de sucesso ou false em caso de erro.
- */
-function registrarUsuario(string $nome, string $email, string $senha): bool {
-    $pdo       = getConnection();
-    $senhaHash = password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]);
-
-    $stmt = $pdo->prepare(
-        'INSERT INTO usuarios (nome, email, senha_hash) VALUES (:nome, :email, :senha_hash)'
-    );
-
-    return $stmt->execute([
-        ':nome'       => $nome,
-        ':email'      => $email,
-        ':senha_hash' => $senhaHash,
-    ]);
-}
-
-/**
- * Inicia sessão do usuário após login bem-sucedido.
- */
-function iniciarSessao(array $usuario): void {
-    session_regenerate_id(true); // previne session fixation
-    $_SESSION['usuario_id']    = $usuario['id'];
-    $_SESSION['usuario_nome']  = $usuario['nome'];
-    $_SESSION['usuario_email'] = $usuario['email'];
-}
-
-/**
- * Verifica se há um usuário logado.
- */
-function estaLogado(): bool {
-    return !empty($_SESSION['usuario_id']);
-}
-
-/**
- * Encerra a sessão do usuário.
- */
-function fazerLogout(): void {
-    $_SESSION = [];
-    if (ini_get('session.use_cookies')) {
-        $p = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $p['path'], $p['domain'], $p['secure'], $p['httponly']
-        );
-    }
-    session_destroy();
-}
-
-// ----------------------------------------------------------
-// 5. PROCESSAMENTO DAS REQUISIÇÕES (POST)
-// ----------------------------------------------------------
-$erro    = '';
-$sucesso = '';
-$acao    = $_POST['acao'] ?? '';
-
-// --- Logout ---
-if ($acao === 'logout') {
-    fazerLogout();
-    header('Location: index.php');
-    exit;
-}
-
-// --- Login ---
-if ($acao === 'login') {
-    $email = trim($_POST['email'] ?? '');
-    $senha = $_POST['senha'] ?? '';
-
-    if (empty($email) || empty($senha)) {
-        $erro = 'Preencha e-mail e senha.';
-    } else {
-        // Tente conectar ao banco; se falhar, mostre mensagem amigável
-        try {
-            $usuario = buscarUsuarioPorEmail($email);
-
-            if ($usuario && password_verify($senha, $usuario['senha_hash'])) {
-                iniciarSessao($usuario);
-                header('Location: index.php');
-                exit;
-            } else {
-                $erro = 'E-mail ou senha incorretos.';
-            }
-        } catch (PDOException $e) {
-            // Em produção, registre o erro em log em vez de exibir.
-            // error_log($e->getMessage());
-            $erro = 'Erro ao conectar ao banco de dados. Verifique as configurações.';
-        }
-    }
-}
-
-// --- Registro ---
-if ($acao === 'registrar') {
-    $nome  = trim($_POST['nome']  ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $senha = $_POST['senha']      ?? '';
-    $conf  = $_POST['confirmar']  ?? '';
-
-    if (empty($nome) || empty($email) || empty($senha)) {
-        $erro = 'Preencha todos os campos.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $erro = 'E-mail inválido.';
-    } elseif (strlen($senha) < 6) {
-        $erro = 'A senha deve ter pelo menos 6 caracteres.';
-    } elseif ($senha !== $conf) {
-        $erro = 'As senhas não conferem.';
-    } else {
-        try {
-            if (buscarUsuarioPorEmail($email)) {
-                $erro = 'Este e-mail já está cadastrado.';
-            } else {
-                registrarUsuario($nome, $email, $senha);
-                $sucesso = 'Cadastro realizado! Agora faça o login.';
-            }
-        } catch (PDOException $e) {
-            $erro = 'Erro ao salvar os dados. Verifique as configurações do banco.';
-        }
-    }
-}
-
-// ----------------------------------------------------------
-// 6. VARIÁVEIS PARA O TEMPLATE HTML
-// ----------------------------------------------------------
-$usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
-?>
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -563,30 +397,13 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             <a href="#roteiros">Roteiros</a>
             <a class="nav-button" href="mailto:contato@conexaojampa.com.br">Quero saber</a>
 
-            <?php if ($usuarioLogado): ?>
-                <!-- Usuário logado: exibe nome + botão sair -->
-                <div class="user-badge">
-                    <span class="avatar"><?= mb_strtoupper(mb_substr($usuarioLogado, 0, 1)) ?></span>
-                    <span><?= htmlspecialchars($usuarioLogado) ?></span>
-                    <form method="POST" action="index.php" style="margin:0">
-                        <input type="hidden" name="acao" value="logout">
-                        <button type="submit" class="btn-logout">Sair</button>
-                    </form>
-                </div>
-            <?php else: ?>
-                <!-- Usuário deslogado: botão Entrar -->
+                            <!-- Usuário deslogado: botão Entrar -->
                 <button class="nav-login" onclick="abrirModal('login')">Entrar</button>
-            <?php endif; ?>
-        </nav>
+                    </nav>
     </header>
 
     <main>
-        <?php if ($usuarioLogado): ?>
-        <div class="welcome-banner" style="width:100%;margin-top:14px;">
-            👋 Bem-vindo de volta, <?= htmlspecialchars($usuarioLogado) ?>! Você está conectado ao Conexão Jampa.
-        </div>
-        <?php endif; ?>
-
+        
         <section class="hero" aria-labelledby="hero-title">
             <div class="hero-content">
                 <p class="eyebrow">Entardecer tropical, horizonte urbano e frescor do litoral</p>
@@ -747,13 +564,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
         </div>
 
         <!-- Mensagens de erro / sucesso (vindas do PHP) -->
-        <?php if ($erro): ?>
-            <div class="alert error"><?= htmlspecialchars($erro) ?></div>
-        <?php endif; ?>
-        <?php if ($sucesso): ?>
-            <div class="alert success"><?= htmlspecialchars($sucesso) ?></div>
-        <?php endif; ?>
-
+                
         <!-- ---- Painel: Login ---- -->
         <div class="modal-panel active" id="panelLogin">
             <h2 id="modalTitle">Bem-vindo</h2>
@@ -766,7 +577,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <label for="login_email">E-mail</label>
                     <input type="email" id="login_email" name="email"
                            placeholder="seu@email.com" required
-                           value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
+                           value="">
                 </div>
 
                 <div class="field">
@@ -791,14 +602,14 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <label for="reg_nome">Nome</label>
                     <input type="text" id="reg_nome" name="nome"
                            placeholder="Seu nome" required
-                           value="<?= htmlspecialchars($_POST['nome'] ?? '') ?>">
+                           value="">
                 </div>
 
                 <div class="field">
                     <label for="reg_email">E-mail</label>
                     <input type="email" id="reg_email" name="email"
                            placeholder="seu@email.com" required
-                           value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
+                           value="">
                 </div>
 
                 <div class="field">
@@ -876,11 +687,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
     // Se o PHP retornou um erro/sucesso, abre o modal
     // automaticamente na aba correspondente à ação enviada
     // ----------------------------------------------------------
-    <?php if ($erro || $sucesso): ?>
-        const acaoEnviada = '<?= $_POST['acao'] ?? '' ?>';
-        abrirModal(acaoEnviada === 'registrar' ? 'registro' : 'login');
-    <?php endif; ?>
-</script>
+    </script>
 
 <footer>
     <p></p>
