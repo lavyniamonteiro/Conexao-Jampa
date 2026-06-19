@@ -359,15 +359,21 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             overflow:hidden;
             background:linear-gradient(135deg,var(--deep-blue),var(--sky-blue));
         }
+        .slide img {
+            position:absolute;
+            inset:0;
+            width:100%;
+            height:100%;
+            object-fit:cover;
+        }
         .slide::before {
             content:"";
             position:absolute;
             inset:0;
-            opacity:.94;
             background:
-                radial-gradient(circle at 18% 22%,rgba(244,178,71,.95) 0 8%,transparent 9%),
-                radial-gradient(circle at 82% 18%,rgba(248,244,234,.2) 0 15%,transparent 16%),
-                linear-gradient(145deg,rgba(18,48,68,.2),rgba(18,48,68,.72));
+                linear-gradient(90deg,rgba(18,48,68,.86),rgba(18,48,68,.42) 58%,rgba(18,48,68,.18)),
+                linear-gradient(180deg,rgba(18,48,68,.06),rgba(18,48,68,.78));
+            z-index:1;
         }
         .slide::after {
             content:"";
@@ -379,15 +385,16 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             border-radius:50% 50% 0 0;
             border-top:5px solid rgba(248,244,234,.55);
             box-shadow:0 -34px 0 -29px rgba(248,244,234,.32),0 -68px 0 -63px rgba(248,244,234,.22);
+            z-index:1;
         }
         .slide-cultural { background:linear-gradient(135deg,#7b3f5c,var(--coral)); }
         .slide-natureza { background:linear-gradient(135deg,var(--palm-green),var(--sea-foam)); }
         .slide-noite { background:linear-gradient(135deg,#182a4a,var(--deep-blue)); }
-        .slide-content { max-width:620px; position:relative; z-index:1; }
+        .slide-content { max-width:620px; position:relative; z-index:2; }
         .slide-kicker { display:block; margin-bottom:12px; color:var(--sun-gold); font-size:.78rem; font-weight:900; text-transform:uppercase; }
         .slide h2 { margin:0; font-size:clamp(1.9rem,5vw,4.2rem); line-height:.95; text-transform:uppercase; }
         .slide p { max-width:560px; margin:18px 0 0; font-size:clamp(.98rem,1.7vw,1.14rem); line-height:1.55; color:rgba(248,244,234,.9); }
-        #prev, #next { position:absolute; top:50%; transform:translateY(-50%); width:44px; aspect-ratio:1; border:0; border-radius:50%; color:var(--off-white); background:rgba(18,48,68,.72); cursor:pointer; font-size:1.2rem; line-height:1; }
+        #prev, #next { position:absolute; top:50%; z-index:5; transform:translateY(-50%); width:44px; aspect-ratio:1; border:0; border-radius:50%; color:var(--off-white); background:rgba(18,48,68,.72); cursor:pointer; font-size:1.2rem; line-height:1; }
         #prev { left:10px; }
         #next { right:10px; }
 
@@ -397,7 +404,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
         .event-hall-header h2 { margin:0; color:var(--ink); font-size:clamp(1.25rem,2.5vw,1.75rem); }
         .event-hall-header p { max-width:620px; margin:6px 0 0; color:#536170; font-size:.88rem; line-height:1.55; }
         .event-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:16px; }
-        .event-card { min-width:0; }
+        .event-card { min-width:0; outline:none; }
         .event-banner {
             position:relative;
             aspect-ratio:16/9;
@@ -406,11 +413,20 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             background:linear-gradient(135deg,rgba(242,97,76,.18),rgba(143,200,221,.36)),var(--off-white);
             box-shadow:0 14px 30px rgba(18,48,68,.1);
         }
+        .event-banner img {
+            display:block;
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            transition:transform .35s ease;
+        }
+        .event-card:hover .event-banner img { transform:scale(1.05); }
         .event-banner::before {
             content:"";
             position:absolute;
             inset:12px;
             border:2px solid rgba(248,244,234,.45);
+            z-index:2;
         }
         .event-banner::after {
             content:attr(data-label);
@@ -425,6 +441,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             font-weight:900;
             text-align:center;
             text-transform:uppercase;
+            z-index:1;
         }
         .event-banner.festival { background:linear-gradient(135deg,var(--coral),var(--sun-gold)); }
         .event-banner.artesanato { background:linear-gradient(135deg,var(--deep-blue),var(--sea-foam)); }
@@ -436,6 +453,32 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
         .event-card p, .event-card time { display:block; margin:0; color:#536170; font-size:.72rem; line-height:1.45; }
         .event-card time { margin-top:3px; }
         .event-card strong { display:block; margin-top:6px; color:var(--coral); font-size:.68rem; text-transform:uppercase; }
+        .event-extra {
+            max-height:0;
+            margin-top:0;
+            opacity:0;
+            overflow:hidden;
+            transform:translateY(-4px);
+            transition:max-height .28s ease,opacity .24s ease,margin-top .24s ease,transform .24s ease;
+        }
+        .event-extra span {
+            display:block;
+            padding:10px 12px;
+            border-left:4px solid var(--coral);
+            background:rgba(248,244,234,.9);
+            color:#405365;
+            font-size:.72rem;
+            line-height:1.45;
+            box-shadow:0 10px 22px rgba(18,48,68,.08);
+        }
+        .event-card.has-extra:hover .event-extra,
+        .event-card.has-extra:focus .event-extra,
+        .event-card.has-extra.is-open .event-extra {
+            max-height:120px;
+            margin-top:10px;
+            opacity:1;
+            transform:translateY(0);
+        }
 
         /* ======================================================
            MODAL DE LOGIN / CADASTRO
@@ -622,6 +665,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
         <div class="carousel" id="experiencias">
             <div class="carousel-track" id="track">
                 <article class="slide slide-cultural">
+                    <img src="assets/eventos/fest-verao.jpg" alt="Público em show do Fest Verão Paraíba">
                     <div class="slide-content">
                         <span class="slide-kicker">Eventos e festivais</span>
                         <h2>João Pessoa em festa o ano todo</h2>
@@ -629,6 +673,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     </div>
                 </article>
                 <article class="slide slide-natureza">
+                    <img src="assets/eventos/centro-historico.jpg" alt="Vista do Centro Histórico de João Pessoa">
                     <div class="slide-content">
                         <span class="slide-kicker">Passeios imperdíveis</span>
                         <h2>Mar, mirantes e Centro Histórico</h2>
@@ -636,6 +681,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     </div>
                 </article>
                 <article class="slide slide-noite">
+                    <img src="assets/eventos/sabadinho.jpg" alt="Sabadinho Bom no Centro Histórico de João Pessoa">
                     <div class="slide-content">
                         <span class="slide-kicker">Sabores e noite</span>
                         <h2>Da tapioca ao samba de rua</h2>
@@ -655,35 +701,113 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                 </div>
             </div>
             <div class="event-grid">
-                <article class="event-card">
-                    <div class="event-banner festival" data-label="Jan"></div>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner festival" data-label="Jan">
+                        <img src="assets/eventos/fest-verao.jpg" alt="Público em show do Fest Verão Paraíba" loading="lazy">
+                    </div>
                     <h3>Fest Verão Paraíba</h3>
                     <p>Grandes shows na Praia de Ponta de Campina, em Cabedelo.</p>
                     <strong>Verão</strong>
+                    <div class="event-extra"><span>Em janeiro, geralmente aos sábados, com arena montada na Praia de Ponta de Campina. Confirme atrações e ingressos no perfil oficial.</span></div>
                 </article>
-                <article class="event-card">
-                    <div class="event-banner artesanato" data-label="Jan/Fev"></div>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner artesanato" data-label="Jan/Fev">
+                        <img src="assets/eventos/salao-artesanato.jpeg" alt="Peças expostas no Salão do Artesanato Paraibano" loading="lazy">
+                    </div>
                     <h3>Salão do Artesanato</h3>
                     <p>Megaevento na Orla de Tambaú com peças únicas de artesãos paraibanos.</p>
                     <strong>Artesanato</strong>
+                    <div class="event-extra"><span>Edição de verão costuma funcionar no fim da tarde/noite, na área do Hotel Tambaú. Entrada gratuita ou solidária, conforme a edição.</span></div>
                 </article>
-                <article class="event-card">
-                    <div class="event-banner carnaval" data-label="Fev"></div>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner carnaval" data-label="Fev">
+                        <img src="assets/eventos/carnaval-muricocas.jpeg" alt="Desfile das Muriçocas do Miramar em João Pessoa" loading="lazy">
+                    </div>
                     <h3>Folia de Rua e Carnaval</h3>
                     <p>Prévias e blocos como Muriçocas do Miramar, Vumbora e Folia de Rua de Tambaú.</p>
                     <strong>Carnaval</strong>
+                    <div class="event-extra"><span>Os blocos têm datas móveis antes do Carnaval. Muriçocas do Miramar tradicionalmente sai na quarta-feira pré-carnavalesca.</span></div>
                 </article>
-                <article class="event-card">
-                    <div class="event-banner saojoao" data-label="Jun"></div>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner saojoao" data-label="Jun">
+                        <img src="assets/eventos/sao-joao.jpeg" alt="Apresentação de quadrilha junina no São João Multicultural" loading="lazy">
+                    </div>
                     <h3>São João Multicultural</h3>
                     <p>Mais de 40 dias de festa no Parque da Lagoa e nos bairros, com muito forró.</p>
                     <strong>Forró</strong>
+                    <div class="event-extra"><span>Programação junina se espalha por maio e junho, com shows no Parque Solon de Lucena, quadrilhas e trios de forró nos bairros.</span></div>
                 </article>
-                <article class="event-card">
-                    <div class="event-banner cinema" data-label="Jul/Ago"></div>
-                    <h3>Fest Aruanda e Festa das Neves</h3>
-                    <p>Cinema nacional, debates, cultura popular, shows, procissões e feiras.</p>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner cinema" data-label="Jul">
+                        <img src="assets/eventos/fest-aruanda.jpeg" alt="Sessão do Fest Aruanda na Praia de Tambaú" loading="lazy">
+                    </div>
+                    <h3>Fest Aruanda</h3>
+                    <p>Festival de cinema nacional com mostras, debates com diretores e sessões gratuitas.</p>
+                    <strong>Cinema</strong>
+                    <div class="event-extra"><span>O guia aponta julho como referência, mas o festival pode ter datas móveis. Consulte a programação do Cinépolis Manaíra e polos parceiros.</span></div>
+                </article>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner festival" data-label="Mar/Abr">
+                        <img src="assets/eventos/restaurant-week.jpg" alt="Identidade visual da Paraíba Restaurant Week" loading="lazy">
+                    </div>
+                    <h3>Paraíba Restaurant Week</h3>
+                    <p>Menus a preço fixo em restaurantes da Grande João Pessoa.</p>
+                    <strong>Gastronomia</strong>
+                    <div class="event-extra"><span>Boa para conhecer restaurantes novos gastando menos. O guia cita valores médios de almoço e jantar, com reserva recomendada.</span></div>
+                </article>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner carnaval" data-label="Mar">
+                        <img src="assets/eventos/sabadinho.jpg" alt="Apresentação musical em João Pessoa" loading="lazy">
+                    </div>
+                    <h3>Rock na Usina</h3>
+                    <p>Bandas independentes e feira criativa na Usina Energisa.</p>
+                    <strong>Música</strong>
+                    <div class="event-extra"><span>Evento ideal para descobrir a cena musical local. Fique de olho na agenda da Usina Energisa para horário e line-up.</span></div>
+                </article>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner artesanato" data-label="Jul">
+                        <img src="assets/eventos/brasil-mostra-brasil.jpg" alt="Multifeira Brasil Mostra Brasil em João Pessoa" loading="lazy">
+                    </div>
+                    <h3>Brasil Mostra Brasil</h3>
+                    <p>Multifeira de comércio, serviços, entretenimento e gastronomia.</p>
+                    <strong>Feira</strong>
+                    <div class="event-extra"><span>Costuma acontecer no Centro de Convenções, com estandes, negócios e praça de alimentação. Confira dias e transporte gratuito da edição.</span></div>
+                </article>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner cinema" data-label="Ago">
+                        <img src="assets/eventos/festa-neves.jpeg" alt="Celebração de Nossa Senhora das Neves em João Pessoa" loading="lazy">
+                    </div>
+                    <h3>Festa das Neves</h3>
+                    <p>Programação religiosa e cultura popular no aniversário da cidade.</p>
+                    <strong>Tradição</strong>
+                    <div class="event-extra"><span>Evento de agosto ligado à padroeira e ao aniversário de João Pessoa, com missas, procissões, shows e feiras.</span></div>
+                </article>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner cultura" data-label="Out">
+                        <img src="assets/eventos/feira-pulgas.jpeg" alt="Feira das Pulgas no Parque Parahyba" loading="lazy">
+                    </div>
+                    <h3>Feira das Pulgas</h3>
+                    <p>Brechós, antiguidades e shows gratuitos no Parque Parahyba I, no Bessa.</p>
+                    <strong>Achados</strong>
+                    <div class="event-extra"><span>Boa para garimpar itens vintage, comer ao ar livre e curtir programação cultural gratuita.</span></div>
+                </article>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner saojoao" data-label="Nov/Dez">
+                        <img src="assets/eventos/centro-historico.jpg" alt="Centro Histórico de João Pessoa" loading="lazy">
+                    </div>
+                    <h3>Virada Cultural</h3>
+                    <p>Maratona de 24h de cultura gratuita no Centro Histórico, orla e espaços culturais.</p>
                     <strong>Cultura</strong>
+                    <div class="event-extra"><span>Novidade citada no guia. Quando confirmada, deve reunir música, artes, rua e programação gratuita em diferentes pontos.</span></div>
+                </article>
+                <article class="event-card has-extra" tabindex="0">
+                    <div class="event-banner festival" data-label="Nov">
+                        <img src="assets/eventos/mercado-peixe.jpg" alt="Mercado do Peixe de Tambaú em João Pessoa" loading="lazy">
+                    </div>
+                    <h3>Festival Gastronômico de Tambaú</h3>
+                    <p>Chefs locais e nacionais com aulas abertas, degustações e jantar show.</p>
+                    <strong>Sabores</strong>
+                    <div class="event-extra"><span>O guia cita novembro como referência. Combine com Mercado de Tambaú, orla e restaurantes do entorno.</span></div>
                 </article>
             </div>
         </section>
@@ -697,31 +821,41 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             </div>
             <div class="event-grid">
                 <article class="event-card">
-                    <div class="event-banner cultura" data-label="Maré baixa"></div>
+                    <div class="event-banner cultura" data-label="Maré baixa">
+                        <img src="assets/eventos/praia-tambau.jpg" alt="Praia de Tambaú em João Pessoa" loading="lazy">
+                    </div>
                     <h3>Litoral e piscinas naturais</h3>
                     <p>Seixas, Bessa, Cabo Branco e Ilha de Areia Vermelha ficam melhores com consulta à tábua de marés.</p>
                     <strong>Praias</strong>
                 </article>
                 <article class="event-card">
-                    <div class="event-banner artesanato" data-label="Centro"></div>
+                    <div class="event-banner artesanato" data-label="Centro">
+                        <img src="assets/eventos/centro-historico.jpg" alt="Centro Histórico de João Pessoa com vista para o Rio Sanhauá" loading="lazy">
+                    </div>
                     <h3>Centro Histórico</h3>
                     <p>Centro Cultural São Francisco, Hotel Globo, Praça Antenor Navarro, bares e música ao vivo.</p>
                     <strong>Cultura</strong>
                 </article>
                 <article class="event-card">
-                    <div class="event-banner festival" data-label="Sabores"></div>
+                    <div class="event-banner festival" data-label="Sabores">
+                        <img src="assets/eventos/restaurant-week.jpg" alt="Gastronomia em João Pessoa" loading="lazy">
+                    </div>
                     <h3>Gastronomia paraibana</h3>
                     <p>Tábua de Carne, Mangai, NAU, Canoa dos Camarões, feiras e Mercado de Tambaú.</p>
                     <strong>Comida</strong>
                 </article>
                 <article class="event-card">
-                    <div class="event-banner carnaval" data-label="Noite"></div>
+                    <div class="event-banner carnaval" data-label="Noite">
+                        <img src="assets/eventos/sabadinho.jpg" alt="Público dançando no Sabadinho Bom, em João Pessoa" loading="lazy">
+                    </div>
                     <h3>Samba, pubs e orla</h3>
                     <p>Sabadinho Bom, Loca Centro, Vila do Porto, Empório Café e Boteco da Orla entram na agenda noturna.</p>
                     <strong>Música</strong>
                 </article>
                 <article class="event-card">
-                    <div class="event-banner saojoao" data-label="Compras"></div>
+                    <div class="event-banner saojoao" data-label="Compras">
+                        <img src="assets/eventos/mercado-artesanato.jpeg" alt="Loja no Mercado de Artesanato Paraibano" loading="lazy">
+                    </div>
                     <h3>Feiras e lembranças</h3>
                     <p>Mercado de Artesanato Paraibano, Mercado Central, Feira Livre de Jaguaribe e Feira da Orla.</p>
                     <strong>Achados</strong>
@@ -829,17 +963,33 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
     let currentSlide = 0;
 
     function updateCarousel() {
+        if (!track || !slides.length) return;
         track.style.transform = `translateX(-${currentSlide * 100}%)`;
     }
 
-    prev.addEventListener("click", () => {
-        currentSlide = currentSlide === 0 ? slides.length - 1 : currentSlide - 1;
-        updateCarousel();
-    });
+    if (track && prev && next && slides.length) {
+        prev.addEventListener("click", () => {
+            currentSlide = currentSlide === 0 ? slides.length - 1 : currentSlide - 1;
+            updateCarousel();
+        });
 
-    next.addEventListener("click", () => {
-        currentSlide = currentSlide === slides.length - 1 ? 0 : currentSlide + 1;
-        updateCarousel();
+        next.addEventListener("click", () => {
+            currentSlide = currentSlide === slides.length - 1 ? 0 : currentSlide + 1;
+            updateCarousel();
+        });
+    }
+
+    document.querySelectorAll('.event-card.has-extra').forEach((card) => {
+        card.addEventListener('click', () => {
+            card.classList.toggle('is-open');
+        });
+
+        card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                card.classList.toggle('is-open');
+            }
+        });
     });
 
     const overlay = document.getElementById('modalOverlay');
