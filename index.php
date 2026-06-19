@@ -89,6 +89,85 @@ function fazerLogout(): void {
     session_destroy();
 }
 
+function garantirTabelaFavoritos(): void {
+    $pdo = getConnection();
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS favoritos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NOT NULL,
+            item_slug VARCHAR(120) NOT NULL,
+            item_titulo VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY usuario_item (usuario_id, item_slug),
+            CONSTRAINT favoritos_usuario_fk
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci'
+    );
+}
+
+function listarFavoritos(int $usuarioId): array {
+    garantirTabelaFavoritos();
+    $pdo = getConnection();
+    $stmt = $pdo->prepare('SELECT item_slug, item_titulo FROM favoritos WHERE usuario_id = :usuario_id ORDER BY created_at DESC');
+    $stmt->execute([':usuario_id' => $usuarioId]);
+
+    $favoritos = [];
+    foreach ($stmt->fetchAll() as $favorito) {
+        $favoritos[$favorito['item_slug']] = $favorito['item_titulo'];
+    }
+
+    return $favoritos;
+}
+
+function alternarFavorito(int $usuarioId, string $slug, string $titulo): void {
+    garantirTabelaFavoritos();
+    $pdo = getConnection();
+
+    $stmt = $pdo->prepare('SELECT id FROM favoritos WHERE usuario_id = :usuario_id AND item_slug = :item_slug LIMIT 1');
+    $stmt->execute([
+        ':usuario_id' => $usuarioId,
+        ':item_slug'  => $slug,
+    ]);
+
+    if ($stmt->fetch()) {
+        $delete = $pdo->prepare('DELETE FROM favoritos WHERE usuario_id = :usuario_id AND item_slug = :item_slug');
+        $delete->execute([
+            ':usuario_id' => $usuarioId,
+            ':item_slug'  => $slug,
+        ]);
+        return;
+    }
+
+    $insert = $pdo->prepare('INSERT INTO favoritos (usuario_id, item_slug, item_titulo) VALUES (:usuario_id, :item_slug, :item_titulo)');
+    $insert->execute([
+        ':usuario_id'  => $usuarioId,
+        ':item_slug'   => $slug,
+        ':item_titulo' => $titulo,
+    ]);
+}
+
+function renderBotaoFavorito(string $slug, string $titulo, array $favoritos): string {
+    $slugSeguro = htmlspecialchars($slug, ENT_QUOTES, 'UTF-8');
+    $tituloSeguro = htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8');
+
+    if (!estaLogado()) {
+        return '';
+    }
+
+    $favoritado = array_key_exists($slug, $favoritos);
+    $classe = $favoritado ? 'favorite-button is-active' : 'favorite-button';
+    $aria = $favoritado ? 'true' : 'false';
+    $label = $favoritado ? 'Remover dos favoritos' : 'Adicionar aos favoritos';
+
+    return '<form class="favorite-form" method="POST" action="index.php#roteiros">
+        <input type="hidden" name="acao" value="alternar_favorito">
+        <input type="hidden" name="favorito_slug" value="' . $slugSeguro . '">
+        <input type="hidden" name="favorito_titulo" value="' . $tituloSeguro . '">
+        <button class="' . $classe . '" type="submit" aria-pressed="' . $aria . '" title="' . $label . '" aria-label="' . $label . ': ' . $tituloSeguro . '">&#9733;</button>
+    </form>';
+}
+
 // ----------------------------------------------------------
 // 5. PROCESSAMENTO DAS REQUISIÇÕES (POST)
 // ----------------------------------------------------------
@@ -101,6 +180,28 @@ if ($acao === 'logout') {
     fazerLogout();
     header('Location: index.php');
     exit;
+}
+
+// --- Favoritos ---
+if ($acao === 'alternar_favorito') {
+    if (!estaLogado()) {
+        $erro = 'Entre na sua conta para favoritar rolês.';
+    } else {
+        $slug = preg_replace('/[^a-z0-9_-]/i', '', $_POST['favorito_slug'] ?? '');
+        $titulo = trim($_POST['favorito_titulo'] ?? '');
+
+        if ($slug === '' || $titulo === '') {
+            $erro = 'Não foi possível identificar o rolê escolhido.';
+        } else {
+            try {
+                alternarFavorito((int) $_SESSION['usuario_id'], $slug, mb_substr($titulo, 0, 255));
+                header('Location: index.php#roteiros');
+                exit;
+            } catch (PDOException $e) {
+                $erro = 'Erro ao salvar favorito. Verifique o banco de dados.';
+            }
+        }
+    }
 }
 
 // --- Login ---
@@ -163,6 +264,14 @@ if ($acao === 'registrar') {
 // 6. VARIÁVEIS PARA O TEMPLATE HTML
 // ----------------------------------------------------------
 $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
+$favoritosUsuario = [];
+if (estaLogado()) {
+    try {
+        $favoritosUsuario = listarFavoritos((int) $_SESSION['usuario_id']);
+    } catch (PDOException $e) {
+        $erro = $erro ?: 'Erro ao carregar favoritos.';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -405,6 +514,37 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
         .event-hall-header p { max-width:620px; margin:6px 0 0; color:#536170; font-size:.88rem; line-height:1.55; }
         .event-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:16px; }
         .event-card { min-width:0; outline:none; }
+        .event-card-head {
+            display:flex;
+            align-items:flex-start;
+            justify-content:space-between;
+            gap:8px;
+        }
+        .event-card-head h3 { flex:1; }
+        .favorite-form { margin:8px 0 0; }
+        .favorite-button {
+            width:34px;
+            aspect-ratio:1;
+            display:grid;
+            place-items:center;
+            border:2px solid rgba(18,48,68,.18);
+            border-radius:50%;
+            background:rgba(248,244,234,.92);
+            color:#9a9a8a;
+            cursor:pointer;
+            font-size:1.05rem;
+            line-height:1;
+            transition:background .2s,border-color .2s,color .2s,transform .2s,box-shadow .2s;
+        }
+        .favorite-button:hover,
+        .favorite-button:focus-visible,
+        .favorite-button.is-active {
+            background:var(--sun-gold);
+            border-color:var(--sun-gold);
+            color:var(--ink);
+            transform:translateY(-2px);
+            box-shadow:0 10px 20px rgba(244,178,71,.28);
+        }
         .event-banner {
             position:relative;
             aspect-ratio:16/9;
@@ -478,6 +618,40 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
             margin-top:10px;
             opacity:1;
             transform:translateY(0);
+        }
+        .favorites-panel {
+            margin:-34px 0 56px;
+            padding:18px 20px;
+            border-left:5px solid var(--sun-gold);
+            background:rgba(248,244,234,.86);
+            box-shadow:0 16px 32px rgba(18,48,68,.08);
+        }
+        .favorites-panel h2 {
+            margin:0 0 10px;
+            color:var(--ink);
+            font-size:1.05rem;
+        }
+        .favorites-list {
+            display:flex;
+            flex-wrap:wrap;
+            gap:8px;
+            margin:0;
+            padding:0;
+            list-style:none;
+        }
+        .favorites-list li {
+            border-radius:999px;
+            padding:8px 12px;
+            background:white;
+            color:#405365;
+            font-size:.78rem;
+            font-weight:800;
+            box-shadow:0 8px 18px rgba(18,48,68,.07);
+        }
+        .favorites-empty {
+            margin:0;
+            color:#536170;
+            font-size:.86rem;
         }
 
         /* ---- Footer ---- */
@@ -704,6 +878,18 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
         <div class="welcome-banner" style="width:100%;margin-top:14px;">
             👋 Bem-vindo de volta, <?= htmlspecialchars($usuarioLogado) ?>! Você está conectado ao Conexão Jampa.
         </div>
+        <section class="favorites-panel" aria-labelledby="favorites-title">
+            <h2 id="favorites-title">Meus favoritos</h2>
+            <?php if ($favoritosUsuario): ?>
+                <ul class="favorites-list">
+                    <?php foreach ($favoritosUsuario as $favoritoTitulo): ?>
+                        <li>★ <?= htmlspecialchars($favoritoTitulo) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <p class="favorites-empty">Clique na estrela dos rolês para guardar seus favoritos aqui.</p>
+            <?php endif; ?>
+        </section>
         <?php endif; ?>
 
         <section class="hero" aria-labelledby="hero-title">
@@ -781,7 +967,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner festival" data-label="Jan">
                         <img src="assets/eventos/fest-verao.jpg" alt="Público em show do Fest Verão Paraíba" loading="lazy">
                     </div>
-                    <h3>Fest Verão Paraíba</h3>
+                    <div class="event-card-head"><h3>Fest Verão Paraíba</h3><?= renderBotaoFavorito('fest-verao-paraiba', 'Fest Verão Paraíba', $favoritosUsuario) ?></div>
                     <p>Grandes shows na Praia de Ponta de Campina, em Cabedelo.</p>
                     <strong>Verão</strong>
                     <div class="event-extra"><span>Em janeiro, geralmente aos sábados, com arena montada na Praia de Ponta de Campina. Confirme atrações e ingressos no perfil oficial.</span></div>
@@ -790,7 +976,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner artesanato" data-label="Jan/Fev">
                         <img src="assets/eventos/salao-artesanato.jpeg" alt="Peças expostas no Salão do Artesanato Paraibano" loading="lazy">
                     </div>
-                    <h3>Salão do Artesanato</h3>
+                    <div class="event-card-head"><h3>Salão do Artesanato</h3><?= renderBotaoFavorito('salao-do-artesanato', 'Salão do Artesanato', $favoritosUsuario) ?></div>
                     <p>Megaevento na Orla de Tambaú com peças únicas de artesãos paraibanos.</p>
                     <strong>Artesanato</strong>
                     <div class="event-extra"><span>Edição de verão costuma funcionar no fim da tarde/noite, na área do Hotel Tambaú. Entrada gratuita ou solidária, conforme a edição.</span></div>
@@ -799,7 +985,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner carnaval" data-label="Fev">
                         <img src="assets/eventos/carnaval-muricocas.jpeg" alt="Desfile das Muriçocas do Miramar em João Pessoa" loading="lazy">
                     </div>
-                    <h3>Folia de Rua e Carnaval</h3>
+                    <div class="event-card-head"><h3>Folia de Rua e Carnaval</h3><?= renderBotaoFavorito('folia-de-rua-carnaval', 'Folia de Rua e Carnaval', $favoritosUsuario) ?></div>
                     <p>Prévias e blocos como Muriçocas do Miramar, Vumbora e Folia de Rua de Tambaú.</p>
                     <strong>Carnaval</strong>
                     <div class="event-extra"><span>Os blocos têm datas móveis antes do Carnaval. Muriçocas do Miramar tradicionalmente sai na quarta-feira pré-carnavalesca.</span></div>
@@ -808,7 +994,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner saojoao" data-label="Jun">
                         <img src="assets/eventos/sao-joao.jpeg" alt="Apresentação de quadrilha junina no São João Multicultural" loading="lazy">
                     </div>
-                    <h3>São João Multicultural</h3>
+                    <div class="event-card-head"><h3>São João Multicultural</h3><?= renderBotaoFavorito('sao-joao-multicultural', 'São João Multicultural', $favoritosUsuario) ?></div>
                     <p>Mais de 40 dias de festa no Parque da Lagoa e nos bairros, com muito forró.</p>
                     <strong>Forró</strong>
                     <div class="event-extra"><span>Programação junina se espalha por maio e junho, com shows no Parque Solon de Lucena, quadrilhas e trios de forró nos bairros.</span></div>
@@ -817,7 +1003,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner cinema" data-label="Jul">
                         <img src="assets/eventos/fest-aruanda.jpeg" alt="Sessão do Fest Aruanda na Praia de Tambaú" loading="lazy">
                     </div>
-                    <h3>Fest Aruanda</h3>
+                    <div class="event-card-head"><h3>Fest Aruanda</h3><?= renderBotaoFavorito('fest-aruanda', 'Fest Aruanda', $favoritosUsuario) ?></div>
                     <p>Festival de cinema nacional com mostras, debates com diretores e sessões gratuitas.</p>
                     <strong>Cinema</strong>
                     <div class="event-extra"><span>O guia aponta julho como referência, mas o festival pode ter datas móveis. Consulte a programação do Cinépolis Manaíra e polos parceiros.</span></div>
@@ -826,7 +1012,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner festival" data-label="Mar/Abr">
                         <img src="assets/eventos/restaurant-week.jpg" alt="Identidade visual da Paraíba Restaurant Week" loading="lazy">
                     </div>
-                    <h3>Paraíba Restaurant Week</h3>
+                    <div class="event-card-head"><h3>Paraíba Restaurant Week</h3><?= renderBotaoFavorito('paraiba-restaurant-week', 'Paraíba Restaurant Week', $favoritosUsuario) ?></div>
                     <p>Menus a preço fixo em restaurantes da Grande João Pessoa.</p>
                     <strong>Gastronomia</strong>
                     <div class="event-extra"><span>Boa para conhecer restaurantes novos gastando menos. O guia cita valores médios de almoço e jantar, com reserva recomendada.</span></div>
@@ -835,7 +1021,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner carnaval" data-label="Mar">
                         <img src="assets/eventos/sabadinho.jpg" alt="Apresentação musical em João Pessoa" loading="lazy">
                     </div>
-                    <h3>Rock na Usina</h3>
+                    <div class="event-card-head"><h3>Rock na Usina</h3><?= renderBotaoFavorito('rock-na-usina', 'Rock na Usina', $favoritosUsuario) ?></div>
                     <p>Bandas independentes e feira criativa na Usina Energisa.</p>
                     <strong>Música</strong>
                     <div class="event-extra"><span>Evento ideal para descobrir a cena musical local. Fique de olho na agenda da Usina Energisa para horário e line-up.</span></div>
@@ -844,7 +1030,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner artesanato" data-label="Jul">
                         <img src="assets/eventos/brasil-mostra-brasil.jpg" alt="Multifeira Brasil Mostra Brasil em João Pessoa" loading="lazy">
                     </div>
-                    <h3>Brasil Mostra Brasil</h3>
+                    <div class="event-card-head"><h3>Brasil Mostra Brasil</h3><?= renderBotaoFavorito('brasil-mostra-brasil', 'Brasil Mostra Brasil', $favoritosUsuario) ?></div>
                     <p>Multifeira de comércio, serviços, entretenimento e gastronomia.</p>
                     <strong>Feira</strong>
                     <div class="event-extra"><span>Costuma acontecer no Centro de Convenções, com estandes, negócios e praça de alimentação. Confira dias e transporte gratuito da edição.</span></div>
@@ -853,7 +1039,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner cinema" data-label="Ago">
                         <img src="assets/eventos/festa-neves.jpeg" alt="Celebração de Nossa Senhora das Neves em João Pessoa" loading="lazy">
                     </div>
-                    <h3>Festa das Neves</h3>
+                    <div class="event-card-head"><h3>Festa das Neves</h3><?= renderBotaoFavorito('festa-das-neves', 'Festa das Neves', $favoritosUsuario) ?></div>
                     <p>Programação religiosa e cultura popular no aniversário da cidade.</p>
                     <strong>Tradição</strong>
                     <div class="event-extra"><span>Evento de agosto ligado à padroeira e ao aniversário de João Pessoa, com missas, procissões, shows e feiras.</span></div>
@@ -862,7 +1048,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner cultura" data-label="Out">
                         <img src="assets/eventos/feira-pulgas.jpeg" alt="Feira das Pulgas no Parque Parahyba" loading="lazy">
                     </div>
-                    <h3>Feira das Pulgas</h3>
+                    <div class="event-card-head"><h3>Feira das Pulgas</h3><?= renderBotaoFavorito('feira-das-pulgas', 'Feira das Pulgas', $favoritosUsuario) ?></div>
                     <p>Brechós, antiguidades e shows gratuitos no Parque Parahyba I, no Bessa.</p>
                     <strong>Achados</strong>
                     <div class="event-extra"><span>Boa para garimpar itens vintage, comer ao ar livre e curtir programação cultural gratuita.</span></div>
@@ -871,7 +1057,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner saojoao" data-label="Nov/Dez">
                         <img src="assets/eventos/centro-historico.jpg" alt="Centro Histórico de João Pessoa" loading="lazy">
                     </div>
-                    <h3>Virada Cultural</h3>
+                    <div class="event-card-head"><h3>Virada Cultural</h3><?= renderBotaoFavorito('virada-cultural', 'Virada Cultural', $favoritosUsuario) ?></div>
                     <p>Maratona de 24h de cultura gratuita no Centro Histórico, orla e espaços culturais.</p>
                     <strong>Cultura</strong>
                     <div class="event-extra"><span>Novidade citada no guia. Quando confirmada, deve reunir música, artes, rua e programação gratuita em diferentes pontos.</span></div>
@@ -880,7 +1066,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
                     <div class="event-banner festival" data-label="Nov">
                         <img src="assets/eventos/mercado-peixe.jpg" alt="Mercado do Peixe de Tambaú em João Pessoa" loading="lazy">
                     </div>
-                    <h3>Festival Gastronômico de Tambaú</h3>
+                    <div class="event-card-head"><h3>Festival Gastronômico de Tambaú</h3><?= renderBotaoFavorito('festival-gastronomico-tambau', 'Festival Gastronômico de Tambaú', $favoritosUsuario) ?></div>
                     <p>Chefs locais e nacionais com aulas abertas, degustações e jantar show.</p>
                     <strong>Sabores</strong>
                     <div class="event-extra"><span>O guia cita novembro como referência. Combine com Mercado de Tambaú, orla e restaurantes do entorno.</span></div>
@@ -1056,11 +1242,13 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
     }
 
     document.querySelectorAll('.event-card.has-extra').forEach((card) => {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (event) => {
+            if (event.target.closest('.favorite-form, .favorite-button')) return;
             card.classList.toggle('is-open');
         });
 
         card.addEventListener('keydown', (event) => {
+            if (event.target.closest('.favorite-form, .favorite-button')) return;
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 card.classList.toggle('is-open');
@@ -1103,7 +1291,7 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
     // automaticamente na aba correspondente à ação enviada
     // ----------------------------------------------------------
     <?php if ($erro || $sucesso): ?>
-        const acaoEnviada = '<?= $_POST['acao'] ?? '' ?>';
+        const acaoEnviada = '<?= htmlspecialchars($_POST['acao'] ?? '', ENT_QUOTES, 'UTF-8') ?>';        
         abrirModal(acaoEnviada === 'registrar' ? 'registro' : 'login');
     <?php endif; ?>
 </script>
@@ -1139,3 +1327,4 @@ $usuarioLogado = estaLogado() ? $_SESSION['usuario_nome'] : null;
 
 </body>
 </html>
+
